@@ -4,7 +4,7 @@ echo "start craete DataSet in BigQuery"
 
 dataset_name="BTC_MARKET_PRICE"
 
-bq mk ${dataset_name}
+bq --location=asia-northeast1 mk -d ${dataset_name}
 
 echo "start create Tables in BigQuery"
 
@@ -16,6 +16,6 @@ for exchange in ${exchange_array[@]}; do
   for period in ${period_array[@]}; do
     table_name="${exchange}_${period}"
     echo "create ${table_name} table"
-    bq mk --table "${dataset_name}.${table_name}" table_schema.json
+    bq mk -t "${dataset_name}.${table_name}" table_schema.json
   done
 done

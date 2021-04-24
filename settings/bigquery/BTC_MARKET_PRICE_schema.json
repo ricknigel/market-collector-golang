@@ -8,37 +8,37 @@
   {
     "description": "始値",
     "name": "OPEN_PRICE",
-    "type": "STRING",
+    "type": "NUMERIC",
     "mode": "Required"
   },
   {
     "description": "高値",
     "name": "HIGH_PRICE",
-    "type": "STRING",
+    "type": "NUMERIC",
     "mode": "Required"
   },
   {
     "description": "低値",
     "name": "LOW_PRICE",
-    "type": "STRING",
+    "type": "NUMERIC",
     "mode": "Required"
   },
   {
     "description": "終値",
     "name": "CLOSE_PRICE",
-    "type": "STRING",
+    "type": "NUMERIC",
     "mode": "Required"
   },
   {
-    "description": "取引量",
+    "description": "取引量(BTC)",
     "name": "VOLUME",
-    "type": "STRING",
+    "type": "NUMERIC",
     "mode": "Required"
   },
   {
-    "description": "直近24時間取引量?",
+    "description": "取引量(通貨ペア)",
     "name": "QUOTE_VOLUME",
-    "type": "STRING",
+    "type": "NUMERIC",
     "mode": "Required"
   }
 ]
