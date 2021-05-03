@@ -9,15 +9,12 @@ BTC_MARKET_PRICEのテーブルレイアウトは、下記の通りとなる。
 |フィールド名|タイプ|モード|説明|
 |:-:|:-:|:-:|:-:|
 |CLOSE_TIME|TIMESTAMP|REQUIRED|日時|
-|OPEN_PRICE|NUMERIC|REQUIRED|始値|
-|HIGH_PRICE|NUMERIC|REQUIRED|高値|
-|LOW_PRICE|NUMERIC|REQUIRED|低値|
-|CLOSE_PRICE|NUMERIC|REQUIRED|終値|
-|VOLUME|NUMERIC|REQUIRED|取引量(BTC) |
-|QUOTE_VOLUME|NUMERIC|REQUIRED|取引量(USD)|
-
-
-なぜタイプをNUMERICにしたかは、[こちらを参考にした](https://stackoverflow.com/questions/54789526/what-is-the-difference-between-numeric-and-float-in-bigquery/54791742)
+|OPEN_PRICE|FLOAT64|REQUIRED|始値|
+|HIGH_PRICE|FLOAT64|REQUIRED|高値|
+|LOW_PRICE|FLOAT64|REQUIRED|低値|
+|CLOSE_PRICE|FLOAT64|REQUIRED|終値|
+|VOLUME|FLOAT64|REQUIRED|取引量(BTC) |
+|QUOTE_VOLUME|FLOAT64|REQUIRED|取引量(USD)|
 
 ### テーブル数
 
@@ -63,9 +60,9 @@ BigQueryでは、データのタイプごとにデータサイズが決められ
 |タイプ|Byte|カラム数|データサイズ(Byte)|
 |:-:|:-:|:-:|:-:|
 |TIMESTAMP|8|1カラム|8|
-|NUMERIC|16|6カラム|96|
+|FLOAT|8|6カラム|48|
 
-よって1レコード毎のデータサイズは、**104バイト**となる
+よって1レコード毎のデータサイズは、**56バイト**となる
 
 #### 期間当たりのレコード量
 
@@ -99,12 +96,12 @@ BigQueryでは、データのタイプごとにデータサイズが決められ
 
 ||1日|1週間|1ヵ月(30日)|1年(365日)|
 |:-:|:-:|:-:|:-:|:-:|
-|**データサイズ(Byte)**|998,816|6,992,960|29,970,304|364,640,224|
-|**データサイズ(MB)**|1.00|6.99|29.97|364.64|
+|**データサイズ(Byte)**|537,824|3,765,440|16,137,856|196,344,736|
+|**データサイズ(MB)**|0.54|3.77|16.14|196.35|
 
 ### 結論
 
-1年間に増加するデータサイズは、約364.64MBとなる。
+1年間に増加するデータサイズは、約196.35MBとなる。
 
 増加するサイズは想定より少なかったため、データ登録にはストリーミング挿入を使用する。
 

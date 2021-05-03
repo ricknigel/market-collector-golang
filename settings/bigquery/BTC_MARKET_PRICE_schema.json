@@ -1,5 +1,11 @@
 [
   {
+    "description": "UnixTime(キー)",
+    "name": "UNIX_TIME",
+    "type": "STRING",
+    "mode": "Required"
+  },
+  {
     "description": "日時",
     "name": "CLOSE_TIME",
     "type": "TIMESTAMP",
@@ -8,37 +14,37 @@
   {
     "description": "始値",
     "name": "OPEN_PRICE",
-    "type": "NUMERIC",
+    "type": "FLOAT",
     "mode": "Required"
   },
   {
     "description": "高値",
     "name": "HIGH_PRICE",
-    "type": "NUMERIC",
+    "type": "FLOAT",
     "mode": "Required"
   },
   {
     "description": "低値",
     "name": "LOW_PRICE",
-    "type": "NUMERIC",
+    "type": "FLOAT",
     "mode": "Required"
   },
   {
     "description": "終値",
     "name": "CLOSE_PRICE",
-    "type": "NUMERIC",
+    "type": "FLOAT",
     "mode": "Required"
   },
   {
     "description": "取引量(BTC)",
     "name": "VOLUME",
-    "type": "NUMERIC",
+    "type": "FLOAT",
     "mode": "Required"
   },
   {
     "description": "取引量(通貨ペア)",
     "name": "QUOTE_VOLUME",
-    "type": "NUMERIC",
+    "type": "FLOAT",
     "mode": "Required"
   }
 ]
