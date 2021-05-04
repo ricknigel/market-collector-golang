@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"cloud.google.com/go/bigquery"
-	"cloud.google.com/go/compute/metadata"
+	"cloud.google.com/go/storage"
+	"github.com/jszwec/csvutil"
 )
 
 type BTC_MARKET_API_DATA struct {
@@ -38,14 +38,14 @@ type BTC_MARKET_API_DATA struct {
 }
 
 type BTC_MARKET_PRICE struct {
-	UNIX_TIME    string    `bigquery:"UNIX_TIME"`
-	CLOSE_TIME   time.Time `bigquery:"CLOSE_TIME"`
-	OPEN_PRICE   float64   `bigquery:"OPEN_PRICE"`
-	HIGH_PRICE   float64   `bigquery:"HIGH_PRICE"`
-	LOW_PRICE    float64   `bigquery:"LOW_PRICE"`
-	CLOSE_PRICE  float64   `bigquery:"CLOSE_PRICE"`
-	VOLUME       float64   `bigquery:"VOLUME"`
-	QUOTE_VOLUME float64   `bigquery:"QUOTE_VOLUME"`
+	UNIX_TIME    string
+	CLOSE_TIME   time.Time
+	OPEN_PRICE   string
+	HIGH_PRICE   string
+	LOW_PRICE    string
+	CLOSE_PRICE  string
+	VOLUME       string
+	QUOTE_VOLUME string
 }
 
 type Exchange struct {
@@ -62,7 +62,7 @@ type Period struct {
 const (
 	cryptoWatchUrl = "https://api.cryptowat.ch/markets"
 	ohlc           = "ohlc"
-	dataset        = "BTC_MARKET_PRICE"
+	bucket         = "upload_btc_test"
 )
 
 var exchanges = []Exchange{
@@ -92,38 +92,26 @@ type PubSubMessage struct {
 	Data []byte `json:"data"`
 }
 
-func (i *BTC_MARKET_PRICE) Save() (map[string]bigquery.Value, string, error) {
-	return map[string]bigquery.Value{
-		"UNIX_TIME":    i.UNIX_TIME,
-		"CLOSE_TIME":   i.CLOSE_PRICE,
-		"OPEN_PRICE":   i.OPEN_PRICE,
-		"HIGH_PRICE":   i.HIGH_PRICE,
-		"LOW_PRICE":    i.LOW_PRICE,
-		"CLOSE_PRICE":  i.CLOSE_PRICE,
-		"VOLUME":       i.VOLUME,
-		"QUOTE_VOLUME": i.QUOTE_VOLUME,
-	}, i.UNIX_TIME, nil
-}
+// TODO: bigqueryから最新日時を取得し、抽出する
 
-func BtcMarketCollector(ctx context.Context, _ PubSubMessage) error {
+func UploadBtcPriceToGcs(ctx context.Context, _ PubSubMessage) error {
 
-	projectId, err := loadProjectId()
-	if err != nil {
-		return err
-	}
-
-	client, err := bigquery.NewClient(ctx, projectId)
+	client, err := storage.NewClient(ctx)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
 
+	execTime := time.Now().Format("20060102_15h")
+
+	// 取得対象の取引所ごとにループ
 	for _, exchange := range exchanges {
 		apiData, err := loadBtcMarketPrice(exchange)
 		if err != nil {
 			return err
 		}
 
+		// 時間足ごとにループ
 		for _, period := range periods {
 
 			v := reflect.ValueOf(apiData.Result).FieldByName(period.ApiField)
@@ -133,33 +121,21 @@ func BtcMarketCollector(ctx context.Context, _ PubSubMessage) error {
 				return fmt.Errorf("型変換エラー: Expected [][]float64, Actual %v", v.Type())
 			}
 
-			tableData, err := convertApiDataToBigQuery(targetPeriodData, period.ApiField)
+			csvData, err := convertCsvData(targetPeriodData)
 			if err != nil {
 				return err
 			}
 
-			inserter := client.Dataset(dataset).Table(exchange.TableName + "_" + period.PeriodName).Inserter()
+			path := fmt.Sprintf("%s/%s/%s.csv", exchange.TableName, period.PeriodName, execTime)
 
-			if err := inserter.Put(ctx, tableData); err != nil {
-				return err
-			}
+			writer := client.Bucket(bucket).Object(path).NewWriter(ctx)
+			defer writer.Close()
+
+			writer.ContentType = "text/csv"
+			writer.Write(csvData)
 		}
 	}
 	return nil
-}
-
-func loadProjectId() (string, error) {
-	if !metadata.OnGCE() {
-		return "", fmt.Errorf("this process is not running")
-	}
-
-	projectId, err := metadata.Get("project/project-id")
-
-	if err != nil {
-		return "", fmt.Errorf("metadata.Get Error: %v", err)
-	}
-
-	return projectId, nil
 }
 
 func loadBtcMarketPrice(exchange Exchange) (*BTC_MARKET_API_DATA, error) {
@@ -187,7 +163,7 @@ func loadBtcMarketPrice(exchange Exchange) (*BTC_MARKET_API_DATA, error) {
 	return &data, nil
 }
 
-func convertApiDataToBigQuery(periodData [][]float64, perios string) ([]BTC_MARKET_PRICE, error) {
+func convertCsvData(periodData [][]float64) ([]byte, error) {
 
 	var dataList []BTC_MARKET_PRICE
 
@@ -202,18 +178,26 @@ func convertApiDataToBigQuery(periodData [][]float64, perios string) ([]BTC_MARK
 			return nil, fmt.Errorf("リストの要素数が不正 length=%v, data=%v", len(d), d)
 		}
 
+		// priceは小数点2桁、volumeは、小数点8桁まで取得される
 		data := BTC_MARKET_PRICE{
 			UNIX_TIME:    strconv.FormatFloat(d[0], 'f', 0, 64),
 			CLOSE_TIME:   time.Unix(int64(d[0]), 0),
-			OPEN_PRICE:   d[1],
-			HIGH_PRICE:   d[2],
-			LOW_PRICE:    d[3],
-			CLOSE_PRICE:  d[4],
-			VOLUME:       d[5],
-			QUOTE_VOLUME: d[6],
+			OPEN_PRICE:   strconv.FormatFloat(d[1], 'f', 2, 64),
+			HIGH_PRICE:   strconv.FormatFloat(d[2], 'f', 2, 64),
+			LOW_PRICE:    strconv.FormatFloat(d[3], 'f', 2, 64),
+			CLOSE_PRICE:  strconv.FormatFloat(d[4], 'f', 2, 64),
+			VOLUME:       strconv.FormatFloat(d[5], 'f', 8, 64),
+			QUOTE_VOLUME: strconv.FormatFloat(d[6], 'f', 8, 64),
 		}
 
 		dataList = append(dataList, data)
 	}
-	return dataList, nil
+
+	// 構造体からcsv形式へ変換
+	b, err := csvutil.Marshal(dataList)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
 }
